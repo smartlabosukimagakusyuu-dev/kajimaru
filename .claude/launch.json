@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kajimaru-web",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["run", "web"],
+      "env": { "BROWSER": "none" },
+      "port": 8081
+    }
+  ]
+}
