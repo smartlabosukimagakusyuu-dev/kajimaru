@@ -1,19 +1,12 @@
 // アプリ全体のデータ置き場。
-// ログイン・自分の情報・家族はFirebase、当番などはまだ見本データをメモリ上で動かしている。
-// No.4以降で、見本データの部分をFirestoreの読み書きに置き換える。
+// ログイン・家族・当番・完了の記録はFirebase。
+// 頼みごと・買いたいもの・ゴミ出しはまだ見本データをメモリ上で動かしている（No.5・6で置き換える）。
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import {
-  ME,
-  mockActivities,
-  mockChores,
-  mockGarbage,
-  mockRequests,
-  mockShopping,
-  PARTNER,
-} from '@/data/mock';
+import { ME, mockGarbage, mockRequests, mockShopping, PARTNER } from '@/data/mock';
+import * as choresApi from '@/lib/chores';
 import { formatCode, updateProfile, type Household, type UserProfile } from '@/lib/family';
 import { auth, db } from '@/lib/firebase';
 import { currentAssignee } from '@/lib/logic';
@@ -78,29 +71,46 @@ function useAppState() {
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [memberIdsKey]);
 
-  // 当番などはまだ見本データなので、画面の中では「自分＝ME」「相手＝PARTNER」として扱う。
-  // 名前と色はFirestoreの本物を使う。（No.4以降で本物のIDに置き換える）
-  const partnerUid = household?.memberIds.find((id) => id !== uid);
-  const myProfile = uid ? (memberProfiles[uid] ?? profile ?? undefined) : undefined;
-  const partnerProfile = partnerUid ? memberProfiles[partnerUid] : undefined;
-  const members: Member[] = [];
-  if (myProfile) {
-    members.push({ id: ME, name: myProfile.displayName, color: myProfile.color, photoUri });
-  }
-  if (partnerProfile) {
-    members.push({ id: PARTNER, name: partnerProfile.displayName, color: partnerProfile.color });
-  }
+  const viewerId = uid ?? '';
+  const partnerId = household?.memberIds.find((id) => id !== uid);
+  const members: Member[] = (household?.memberIds ?? [])
+    .filter((id) => memberProfiles[id])
+    .map((id) => ({
+      id,
+      name: memberProfiles[id].displayName,
+      color: memberProfiles[id].color,
+      photoUri: id === uid ? photoUri : undefined,
+    }));
 
-  const viewerId = ME;
-  const [chores, setChores] = useState<Chore[]>(mockChores);
+  // 当番と完了の記録（Firestore）
+  const [choresSnap, setChoresSnap] = useState<{ hid: string; items: Chore[] }>();
+  const [activitySnap, setActivitySnap] = useState<{ hid: string; items: Activity[] }>();
+  useEffect(() => {
+    if (!householdId) return;
+    const offChores = choresApi.subscribeChores(householdId, (items) =>
+      setChoresSnap({ hid: householdId, items }),
+    );
+    const offActivity = choresApi.subscribeActivities(householdId, (items) =>
+      setActivitySnap({ hid: householdId, items }),
+    );
+    return () => {
+      offChores();
+      offActivity();
+    };
+  }, [householdId]);
+  const chores = choresSnap && choresSnap.hid === householdId ? choresSnap.items : [];
+  const activities = activitySnap && activitySnap.hid === householdId ? activitySnap.items : [];
+
+  // まだ見本データのもの。見本の「自分(ME)／相手(PARTNER)」を本物のIDに読みかえて使う
+  const realId = (id: string) => (id === ME ? viewerId : id === PARTNER ? (partnerId ?? PARTNER) : id);
   const [garbage, setGarbage] = useState<Garbage[]>(mockGarbage);
-  const [requests, setRequests] = useState<HouseRequest[]>(mockRequests);
-  const [shopping, setShopping] = useState<ShoppingItem[]>(mockShopping);
-  const [activities, setActivities] = useState<Activity[]>(mockActivities);
+  const [mockRequestList, setRequests] = useState<HouseRequest[]>(mockRequests);
+  const [mockShoppingList, setShopping] = useState<ShoppingItem[]>(mockShopping);
+  const requests = mockRequestList.map((r) => ({ ...r, from: realId(r.from), to: realId(r.to) }));
+  const shopping = mockShoppingList.map((s) => ({ ...s, addedBy: realId(s.addedBy) }));
+
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const partnerId = members.find((m) => m.id !== viewerId)?.id;
 
   const showToast = (message: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -111,11 +121,16 @@ function useAppState() {
   const memberName = (id: string | null | undefined) =>
     members.find((m) => m.id === id)?.name ?? (id === PARTNER ? 'パートナー' : 'だれか');
 
-  const addActivity = (text: string) =>
-    setActivities((list) => [
-      { id: newId('a'), by: viewerId, text, at: new Date().toISOString() },
-      ...list,
-    ]);
+  /** Firestoreへの書き込みを行い、失敗したらお知らせする */
+  const save = async (action: (hid: string, uid: string) => Promise<void>, done?: string) => {
+    if (!householdId || !uid) return;
+    try {
+      await action(householdId, uid);
+      if (done) showToast(done);
+    } catch {
+      showToast('保存できませんでした。インターネットの接続を確認してください');
+    }
+  };
 
   return {
     authReady: user !== undefined,
@@ -147,43 +162,22 @@ function useAppState() {
       if (uid) await updateProfile(uid, { notificationsOn: on });
     },
 
-    addChore: (chore: Omit<Chore, 'id' | 'rotationIndex'>) => {
-      setChores((list) => [...list, { ...chore, id: newId('c'), rotationIndex: 0 }]);
-      showToast(`「${chore.name}」を当番に追加しました`);
-    },
-    removeChore: (id: string) => setChores((list) => list.filter((c) => c.id !== id)),
+    addChore: (chore: Pick<Chore, 'name' | 'assignMode' | 'assignees' | 'days' | 'notifyTime'>) =>
+      save((hid) => choresApi.addChore(hid, chore), `「${chore.name}」を当番に追加しました`),
+    removeChore: (id: string) => save((hid) => choresApi.deleteChore(hid, id)),
     completeChore: (id: string) => {
       const chore = chores.find((c) => c.id === id);
       if (!chore) return;
-      setChores((list) =>
-        list.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                lastDoneAt: new Date().toISOString(),
-                lastDoneBy: viewerId,
-                rotationIndex: c.assignMode === 'rotation' ? c.rotationIndex + 1 : c.rotationIndex,
-              }
-            : c,
-        ),
+      return save(
+        (hid, me) => choresApi.completeChore(hid, chore, me),
+        `お疲れさま！「${chore.name}」の完了を家族に知らせました`,
       );
-      addActivity(chore.name);
-      showToast(`お疲れさま！「${chore.name}」の完了を家族に知らせました`);
     },
-    undoChore: (id: string) =>
-      setChores((list) =>
-        list.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                lastDoneAt: undefined,
-                lastDoneBy: undefined,
-                rotationIndex:
-                  c.assignMode === 'rotation' ? Math.max(0, c.rotationIndex - 1) : c.rotationIndex,
-              }
-            : c,
-        ),
-      ),
+    undoChore: (id: string) => {
+      const chore = chores.find((c) => c.id === id);
+      if (!chore) return;
+      return save((hid) => choresApi.undoChore(hid, chore));
+    },
 
     addGarbage: (item: Omit<Garbage, 'id'>) => {
       setGarbage((list) => [...list, { ...item, id: newId('g') }]);
@@ -202,7 +196,7 @@ function useAppState() {
       const req = requests.find((r) => r.id === id);
       setRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
       if (!req) return;
-      if (status === 'done') addActivity(req.text);
+      if (status === 'done') save((hid, me) => choresApi.addActivity(hid, me, req.text));
       const label = { ok: 'OK', maybe: '無理かも', done: '完了', waiting: '' }[status];
       showToast(`${memberName(req.from)}さんに「${label}」と伝えました`);
     },
@@ -223,12 +217,8 @@ function useAppState() {
       setShopping((list) => list.map((s) => (s.id === id ? { ...s, bought: !s.bought } : s))),
     clearBought: () => setShopping((list) => list.filter((s) => !s.bought)),
 
-    thank: (activityId: string) => {
-      setActivities((list) =>
-        list.map((a) => (a.id === activityId ? { ...a, thankedBy: viewerId } : a)),
-      );
-      showToast('「ありがとう」を送りました');
-    },
+    thank: (activityId: string) =>
+      save((hid, me) => choresApi.thankActivity(hid, activityId, me), '「ありがとう」を送りました'),
 
     assigneeName: (chore: Chore) => {
       const id = currentAssignee(chore);

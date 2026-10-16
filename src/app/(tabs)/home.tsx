@@ -52,8 +52,13 @@ export default function HomeScreen() {
       <Card>
         {todayChores.length ? (
           todayChores.map((c) => <ChoreRow key={c.id} chore={c} />)
-        ) : (
+        ) : chores.length ? (
           <Empty>今日の当番はありません</Empty>
+        ) : (
+          <>
+            <Empty>まだ当番がありません。お風呂掃除や食器洗いなど、家事の担当を決めましょう。</Empty>
+            <Button label="＋ 当番を作る" small onPress={() => router.push('/chore-new')} />
+          </>
         )}
       </Card>
 

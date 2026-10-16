@@ -23,6 +23,8 @@ export type Chore = {
   notifyTime: string;
   lastDoneAt?: string;
   lastDoneBy?: string;
+  /** 完了したときの記録のID（取り消すときに記録も消すため） */
+  lastActivityId?: string;
 };
 
 export type GarbageRule =
