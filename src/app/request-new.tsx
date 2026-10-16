@@ -47,6 +47,11 @@ export default function RequestNewScreen() {
         {others.map((m) => (
           <Chip key={m.id} label={m.name} selected={to === m.id} onPress={() => setTo(m.id)} />
         ))}
+        {others.length === 0 && (
+          <Text style={{ fontSize: 13, color: Colors.subText }}>
+            まだ家族がいません。「その他 → 家族・招待」からパートナーを招待してください。
+          </Text>
+        )}
       </ChipRow>
 
       <Label>何を</Label>

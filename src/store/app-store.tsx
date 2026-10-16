@@ -1,12 +1,13 @@
 // アプリ全体のデータ置き場。
-// ログイン・家族・当番・完了の記録はFirebase。
-// 頼みごと・買いたいもの・ゴミ出しはまだ見本データをメモリ上で動かしている（No.5・6で置き換える）。
+// ログイン・家族・当番・完了の記録・頼みごとはFirebase。
+// 買いたいもの・ゴミ出しはまだ見本データをメモリ上で動かしている（No.6で置き換える）。
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { ME, mockGarbage, mockRequests, mockShopping, PARTNER } from '@/data/mock';
+import { ME, mockGarbage, mockShopping, PARTNER } from '@/data/mock';
 import * as choresApi from '@/lib/chores';
+import * as requestsApi from '@/lib/requests';
 import { formatCode, updateProfile, type Household, type UserProfile } from '@/lib/family';
 import { auth, db } from '@/lib/firebase';
 import { currentAssignee } from '@/lib/logic';
@@ -85,6 +86,7 @@ function useAppState() {
   // 当番と完了の記録（Firestore）
   const [choresSnap, setChoresSnap] = useState<{ hid: string; items: Chore[] }>();
   const [activitySnap, setActivitySnap] = useState<{ hid: string; items: Activity[] }>();
+  const [requestsSnap, setRequestsSnap] = useState<{ hid: string; items: HouseRequest[] }>();
   useEffect(() => {
     if (!householdId) return;
     const offChores = choresApi.subscribeChores(householdId, (items) =>
@@ -93,20 +95,23 @@ function useAppState() {
     const offActivity = choresApi.subscribeActivities(householdId, (items) =>
       setActivitySnap({ hid: householdId, items }),
     );
+    const offRequests = requestsApi.subscribeRequests(householdId, (items) =>
+      setRequestsSnap({ hid: householdId, items }),
+    );
     return () => {
       offChores();
       offActivity();
+      offRequests();
     };
   }, [householdId]);
   const chores = choresSnap && choresSnap.hid === householdId ? choresSnap.items : [];
   const activities = activitySnap && activitySnap.hid === householdId ? activitySnap.items : [];
+  const requests = requestsSnap && requestsSnap.hid === householdId ? requestsSnap.items : [];
 
   // まだ見本データのもの。見本の「自分(ME)／相手(PARTNER)」を本物のIDに読みかえて使う
   const realId = (id: string) => (id === ME ? viewerId : id === PARTNER ? (partnerId ?? PARTNER) : id);
   const [garbage, setGarbage] = useState<Garbage[]>(mockGarbage);
-  const [mockRequestList, setRequests] = useState<HouseRequest[]>(mockRequests);
   const [mockShoppingList, setShopping] = useState<ShoppingItem[]>(mockShopping);
-  const requests = mockRequestList.map((r) => ({ ...r, from: realId(r.from), to: realId(r.to) }));
   const shopping = mockShoppingList.map((s) => ({ ...s, addedBy: realId(s.addedBy) }));
 
   const [toast, setToast] = useState<string | null>(null);
@@ -185,27 +190,22 @@ function useAppState() {
     },
     removeGarbage: (id: string) => setGarbage((list) => list.filter((g) => g.id !== id)),
 
-    addRequest: (req: Omit<HouseRequest, 'id' | 'from' | 'status' | 'remindCount'>) => {
-      setRequests((list) => [
-        { ...req, id: newId('r'), from: viewerId, status: 'waiting', remindCount: 0 },
-        ...list,
-      ]);
-      showToast(`${memberName(req.to)}さんにお願いを送りました`);
-    },
+    addRequest: (req: Pick<HouseRequest, 'to' | 'text' | 'place' | 'due' | 'notifyTime'>) =>
+      save(
+        (hid, me) => requestsApi.addRequest(hid, me, req),
+        `${memberName(req.to)}さんにお願いを送りました`,
+      ),
     setRequestStatus: (id: string, status: RequestStatus) => {
       const req = requests.find((r) => r.id === id);
-      setRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
       if (!req) return;
-      if (status === 'done') save((hid, me) => choresApi.addActivity(hid, me, req.text));
       const label = { ok: 'OK', maybe: '無理かも', done: '完了', waiting: '' }[status];
-      showToast(`${memberName(req.from)}さんに「${label}」と伝えました`);
+      return save(async (hid, me) => {
+        await requestsApi.setRequestStatus(hid, id, status);
+        if (status === 'done') await choresApi.addActivity(hid, me, req.text);
+      }, `${memberName(req.from)}さんに「${label}」と伝えました`);
     },
-    snoozeRequest: (id: string) => {
-      setRequests((list) =>
-        list.map((r) => (r.id === id ? { ...r, remindCount: r.remindCount + 1 } : r)),
-      );
-      showToast('30分後にもう一度お知らせします');
-    },
+    snoozeRequest: (id: string) =>
+      save((hid) => requestsApi.snoozeRequest(hid, id), '30分後にもう一度お知らせします'),
 
     addShopping: (name: string, store: string) => {
       setShopping((list) => [

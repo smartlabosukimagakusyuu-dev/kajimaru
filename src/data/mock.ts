@@ -1,6 +1,6 @@
 // 画面のイメージ確認用の見本データ。Firebaseにつないだら使わなくなる。
 import { addDays } from '@/lib/date';
-import type { Garbage, HouseRequest, ShoppingItem } from '@/types';
+import type { Garbage, ShoppingItem } from '@/types';
 
 export const ME = 'u1';
 export const PARTNER = 'u2';
@@ -24,41 +24,6 @@ export const mockGarbage: Garbage[] = [
     rule: { type: 'nth', weeks: [2, 4], day: 3 },
     notifyTime: '21:00',
     notifyTo: 'duty',
-  },
-];
-
-export const mockRequests: HouseRequest[] = [
-  {
-    id: 'r1',
-    text: '牛乳を買う',
-    place: '駅前のスーパー',
-    from: PARTNER,
-    to: ME,
-    due: now.toISOString(),
-    notifyTime: '17:00',
-    status: 'waiting',
-    remindCount: 0,
-  },
-  {
-    id: 'r2',
-    text: '保育園の連絡帳を書く',
-    from: PARTNER,
-    to: ME,
-    due: addDays(now, 1).toISOString(),
-    notifyTime: '21:00',
-    status: 'ok',
-    remindCount: 0,
-  },
-  {
-    id: 'r3',
-    text: 'クリーニングを受け取る',
-    place: '本町のクリーニング店',
-    from: ME,
-    to: PARTNER,
-    due: addDays(now, 1).toISOString(),
-    notifyTime: '18:00',
-    status: 'waiting',
-    remindCount: 1,
   },
 ];
 
