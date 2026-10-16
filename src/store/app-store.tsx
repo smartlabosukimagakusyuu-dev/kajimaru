@@ -1,6 +1,7 @@
-// アプリ全体のデータ置き場。いまは見本データをメモリ上で動かしているだけ。
-// Firebaseにつなぐときは、この中身をFirestoreの読み書きに置き換える。
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
+// アプリ全体のデータ置き場。ログインはFirebase、それ以外はまだ見本データをメモリ上で動かしている。
+// No.3以降で、見本データの部分をFirestoreの読み書きに置き換える。
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   ME,
@@ -11,6 +12,7 @@ import {
   mockRequests,
   mockShopping,
 } from '@/data/mock';
+import { auth } from '@/lib/firebase';
 import { currentAssignee } from '@/lib/logic';
 import type {
   Activity,
@@ -26,8 +28,18 @@ let idCounter = 100;
 const newId = (prefix: string) => `${prefix}${++idCounter}`;
 
 function useAppState() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  /** Firebaseのログイン中のユーザー。ログイン状態の確認が終わるまでは undefined */
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [onboarded, setOnboarded] = useState(false);
+
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, (next) => {
+        setUser(next);
+        if (!next) setOnboarded(false);
+      }),
+    [],
+  );
   /** お試し用：「自分」と「パートナー」の画面を切り替える */
   const [viewerId, setViewerId] = useState(ME);
   const [members, setMembers] = useState<Member[]>(mockMembers);
@@ -59,7 +71,9 @@ function useAppState() {
     ]);
 
   return {
-    loggedIn,
+    authReady: user !== undefined,
+    loggedIn: !!user,
+    user,
     onboarded,
     viewerId,
     partnerId,
@@ -75,11 +89,6 @@ function useAppState() {
     memberName,
     showToast,
 
-    login: () => setLoggedIn(true),
-    logout: () => {
-      setLoggedIn(false);
-      setOnboarded(false);
-    },
     finishOnboarding: (name: string) => {
       if (name.trim()) {
         setMembers((list) => list.map((m) => (m.id === ME ? { ...m, name: name.trim() } : m)));

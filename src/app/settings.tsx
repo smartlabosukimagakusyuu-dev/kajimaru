@@ -5,6 +5,7 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Avatar, Button, Card, Field, Screen, SectionTitle } from '@/components/ui';
 import { Colors } from '@/constants/colors';
+import { authErrorMessage, deleteAccount, signOut } from '@/lib/auth';
 import { useApp } from '@/store/app-store';
 
 export default function SettingsScreen() {
@@ -15,8 +16,8 @@ export default function SettingsScreen() {
     setViewerPhoto,
     notificationsOn,
     setNotificationsOn,
-    logout,
     showToast,
+    user,
   } = useApp();
   const me = members.find((m) => m.id === viewerId);
   const [name, setName] = useState(me?.name ?? '');
@@ -34,9 +35,18 @@ export default function SettingsScreen() {
     showToast('アイコンを変更しました');
   };
 
-  const signOut = () => {
-    logout();
+  const logout = async () => {
+    await signOut();
     router.replace('/login');
+  };
+
+  const leave = async () => {
+    try {
+      await deleteAccount();
+      router.replace('/login');
+    } catch (e) {
+      showToast(authErrorMessage(e));
+    }
   };
 
   return (
@@ -90,13 +100,14 @@ export default function SettingsScreen() {
 
       <SectionTitle>アカウント</SectionTitle>
       <Card>
-        <Button label="ログアウト" variant="secondary" onPress={signOut} />
+        {user?.email ? <Text style={styles.account}>{user.email} でログイン中</Text> : null}
+        <Button label="ログアウト" variant="secondary" onPress={logout} />
         {confirmLeave ? (
           <View style={{ gap: 8 }}>
             <Text style={styles.warn}>
               退会すると、あなたのデータは消えて元に戻せません。本当に退会しますか？
             </Text>
-            <Button label="退会する" variant="danger" onPress={signOut} />
+            <Button label="退会する" variant="danger" onPress={leave} />
             <Button label="やめる" variant="ghost" onPress={() => setConfirmLeave(false)} />
           </View>
         ) : (
@@ -112,4 +123,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { fontSize: 16, color: Colors.text },
   warn: { fontSize: 13, color: Colors.danger, lineHeight: 20 },
+  account: { fontSize: 13, color: Colors.subText },
 });

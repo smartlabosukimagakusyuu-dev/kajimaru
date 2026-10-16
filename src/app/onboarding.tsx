@@ -9,9 +9,10 @@ import { useApp } from '@/store/app-store';
 type Step = 'name' | 'family' | 'join' | 'notify';
 
 export default function OnboardingScreen() {
-  const { finishOnboarding, inviteCode, showToast } = useApp();
+  const { finishOnboarding, inviteCode, showToast, user } = useApp();
   const [step, setStep] = useState<Step>('name');
-  const [name, setName] = useState('');
+  // Googleログインなら、Googleの名前をはじめから入れておく
+  const [name, setName] = useState(user?.displayName ?? '');
   const [code, setCode] = useState('');
 
   const stepNumber = { name: 1, family: 2, join: 2, notify: 3 }[step];
