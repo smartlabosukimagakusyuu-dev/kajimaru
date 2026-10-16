@@ -1,28 +1,30 @@
-// アプリ全体のデータ置き場。
-// ログイン・家族・当番・完了の記録・頼みごとはFirebase。
-// 買いたいもの・ゴミ出しはまだ見本データをメモリ上で動かしている（No.6で置き換える）。
+// アプリ全体のデータ置き場。データはすべてFirebase（ログイン・Firestore）に保存している。
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { ME, mockGarbage, mockShopping, PARTNER } from '@/data/mock';
 import * as choresApi from '@/lib/chores';
-import * as requestsApi from '@/lib/requests';
 import { formatCode, updateProfile, type Household, type UserProfile } from '@/lib/family';
 import { auth, db } from '@/lib/firebase';
+import * as garbageApi from '@/lib/garbage';
 import { currentAssignee } from '@/lib/logic';
-import type {
-  Activity,
-  Chore,
-  Garbage,
-  HouseRequest,
-  Member,
-  RequestStatus,
-  ShoppingItem,
-} from '@/types';
+import * as requestsApi from '@/lib/requests';
+import * as shoppingApi from '@/lib/shopping';
+import type { Chore, Garbage, HouseRequest, Member, RequestStatus } from '@/types';
 
-let idCounter = 100;
-const newId = (prefix: string) => `${prefix}${++idCounter}`;
+/** 家族のデータ（当番・頼みごとなど）を1種類、リアルタイムに読み込む */
+function useHouseholdList<T>(
+  householdId: string | undefined,
+  subscribe: (householdId: string, onChange: (items: T[]) => void) => Unsubscribe,
+) {
+  // どの家族のデータかと一緒に持ち、家族が変わったときに前のデータが混ざらないようにする
+  const [snap, setSnap] = useState<{ hid: string; items: T[] }>();
+  useEffect(() => {
+    if (!householdId) return;
+    return subscribe(householdId, (items) => setSnap({ hid: householdId, items }));
+  }, [householdId, subscribe]);
+  return snap && snap.hid === householdId ? snap.items : [];
+}
 
 function useAppState() {
   /** Firebaseのログイン中のユーザー。ログイン状態の確認が終わるまでは undefined */
@@ -83,36 +85,12 @@ function useAppState() {
       photoUri: id === uid ? photoUri : undefined,
     }));
 
-  // 当番と完了の記録（Firestore）
-  const [choresSnap, setChoresSnap] = useState<{ hid: string; items: Chore[] }>();
-  const [activitySnap, setActivitySnap] = useState<{ hid: string; items: Activity[] }>();
-  const [requestsSnap, setRequestsSnap] = useState<{ hid: string; items: HouseRequest[] }>();
-  useEffect(() => {
-    if (!householdId) return;
-    const offChores = choresApi.subscribeChores(householdId, (items) =>
-      setChoresSnap({ hid: householdId, items }),
-    );
-    const offActivity = choresApi.subscribeActivities(householdId, (items) =>
-      setActivitySnap({ hid: householdId, items }),
-    );
-    const offRequests = requestsApi.subscribeRequests(householdId, (items) =>
-      setRequestsSnap({ hid: householdId, items }),
-    );
-    return () => {
-      offChores();
-      offActivity();
-      offRequests();
-    };
-  }, [householdId]);
-  const chores = choresSnap && choresSnap.hid === householdId ? choresSnap.items : [];
-  const activities = activitySnap && activitySnap.hid === householdId ? activitySnap.items : [];
-  const requests = requestsSnap && requestsSnap.hid === householdId ? requestsSnap.items : [];
-
-  // まだ見本データのもの。見本の「自分(ME)／相手(PARTNER)」を本物のIDに読みかえて使う
-  const realId = (id: string) => (id === ME ? viewerId : id === PARTNER ? (partnerId ?? PARTNER) : id);
-  const [garbage, setGarbage] = useState<Garbage[]>(mockGarbage);
-  const [mockShoppingList, setShopping] = useState<ShoppingItem[]>(mockShopping);
-  const shopping = mockShoppingList.map((s) => ({ ...s, addedBy: realId(s.addedBy) }));
+  // 家族で共有しているデータ（Firestoreからリアルタイムに読み込む）
+  const chores = useHouseholdList(householdId, choresApi.subscribeChores);
+  const activities = useHouseholdList(householdId, choresApi.subscribeActivities);
+  const requests = useHouseholdList(householdId, requestsApi.subscribeRequests);
+  const garbage = useHouseholdList(householdId, garbageApi.subscribeGarbage);
+  const shopping = useHouseholdList(householdId, shoppingApi.subscribeShopping);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,7 +102,7 @@ function useAppState() {
   };
 
   const memberName = (id: string | null | undefined) =>
-    members.find((m) => m.id === id)?.name ?? (id === PARTNER ? 'パートナー' : 'だれか');
+    members.find((m) => m.id === id)?.name ?? 'だれか';
 
   /** Firestoreへの書き込みを行い、失敗したらお知らせする */
   const save = async (action: (hid: string, uid: string) => Promise<void>, done?: string) => {
@@ -184,11 +162,9 @@ function useAppState() {
       return save((hid) => choresApi.undoChore(hid, chore));
     },
 
-    addGarbage: (item: Omit<Garbage, 'id'>) => {
-      setGarbage((list) => [...list, { ...item, id: newId('g') }]);
-      showToast(`「${item.kind}」を登録しました`);
-    },
-    removeGarbage: (id: string) => setGarbage((list) => list.filter((g) => g.id !== id)),
+    addGarbage: (item: Omit<Garbage, 'id'>) =>
+      save((hid) => garbageApi.addGarbage(hid, item), `「${item.kind}」を登録しました`),
+    removeGarbage: (id: string) => save((hid) => garbageApi.deleteGarbage(hid, id)),
 
     addRequest: (req: Pick<HouseRequest, 'to' | 'text' | 'place' | 'due' | 'notifyTime'>) =>
       save(
@@ -207,15 +183,20 @@ function useAppState() {
     snoozeRequest: (id: string) =>
       save((hid) => requestsApi.snoozeRequest(hid, id), '30分後にもう一度お知らせします'),
 
-    addShopping: (name: string, store: string) => {
-      setShopping((list) => [
-        ...list,
-        { id: newId('s'), name, store, addedBy: viewerId, bought: false },
-      ]);
+    addShopping: (name: string, store: string) =>
+      save((hid, me) => shoppingApi.addShopping(hid, me, name, store)),
+    toggleShopping: (id: string) => {
+      const item = shopping.find((s) => s.id === id);
+      if (!item) return;
+      return save((hid) => shoppingApi.setBought(hid, id, !item.bought));
     },
-    toggleShopping: (id: string) =>
-      setShopping((list) => list.map((s) => (s.id === id ? { ...s, bought: !s.bought } : s))),
-    clearBought: () => setShopping((list) => list.filter((s) => !s.bought)),
+    clearBought: () =>
+      save((hid) =>
+        shoppingApi.clearBought(
+          hid,
+          shopping.filter((s) => s.bought).map((s) => s.id),
+        ),
+      ),
 
     thank: (activityId: string) =>
       save((hid, me) => choresApi.thankActivity(hid, activityId, me), '「ありがとう」を送りました'),

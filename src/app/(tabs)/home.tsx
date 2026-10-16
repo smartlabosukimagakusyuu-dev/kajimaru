@@ -43,8 +43,13 @@ export default function HomeScreen() {
           <Text style={styles.garbageText}>
             明日は{tomorrowGarbage.map((g) => g.kind).join('・')}の日です
           </Text>
-        ) : (
+        ) : garbage.length ? (
           <Empty>明日はゴミの日ではありません</Empty>
+        ) : (
+          <>
+            <Empty>ゴミの日を登録すると、前の日にお知らせします。</Empty>
+            <Button label="ゴミの日を登録する" small variant="secondary" onPress={() => router.push('/garbage')} />
+          </>
         )}
       </Card>
 
