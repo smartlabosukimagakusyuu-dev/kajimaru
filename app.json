@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "kajimaru",
+    "name": "カジまる",
     "slug": "kajimaru",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kajimaru",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -25,6 +25,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "家族に表示するアイコンの写真を選ぶために使います",
+          "cameraPermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
