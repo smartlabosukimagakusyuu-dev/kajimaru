@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// カジまるのセキュリティルール
+// 基本の考え方：「同じ家族のメンバーだけが、その家族のデータを読み書きできる」
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(householdId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.memberIds;
+    }
+
+    // ユーザー情報（表示名・アイコン色・所属する家族など）
+    match /users/{uid} {
+      // 自分、または同じ家族のメンバーなら読める
+      allow read: if signedIn() && (
+        request.auth.uid == uid
+        || (resource.data.householdId is string && isMember(resource.data.householdId))
+      );
+      // 書けるのは自分の情報だけ
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // 招待コード → 家族ID の対応表
+    match /inviteCodes/{code} {
+      // コードを知っている人だけが1件ずつ調べられる（一覧は取れない）
+      allow get: if signedIn();
+      allow list: if false;
+      // 家族を作った人が、その家族のコードを作る
+      allow create: if signedIn()
+        && getAfter(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.createdBy == request.auth.uid;
+      allow update: if false;
+      allow delete: if isMember(resource.data.householdId);
+    }
+
+    // 家族
+    match /households/{householdId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      // 家族を作る：作った人だけがメンバーで、無料版は最大2人
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.plan == 'free';
+
+      // メンバーは、家族名などを変更できる（メンバーの入れ替えはできない）
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.memberIds
+        && request.resource.data.memberIds == resource.data.memberIds
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.plan == resource.data.plan;
+
+      // 招待コードで参加する：自分を1人だけ追加できる（2人まで）
+      allow update: if signedIn()
+        && !(request.auth.uid in resource.data.memberIds)
+        && resource.data.memberIds.size() < 2
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'lastJoinCode'])
+        && request.resource.data.memberIds == resource.data.memberIds.concat([request.auth.uid])
+        && get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.lastJoinCode)).data.householdId == householdId;
+
+      // 当番・ゴミ出し・頼みごと・買いたいもの・記録は、家族のメンバーだけ
+      match /{collection}/{docId} {
+        allow read, write: if collection in ['chores', 'garbage', 'requests', 'shopping', 'activity']
+          && isMember(householdId);
+      }
+    }
+
+    // 通知の予約はサーバー（Cloud Functions）だけが扱う
+    match /scheduledNotifications/{id} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,9 +1,8 @@
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { Card, Chip, ChipRow, Screen, SectionTitle, Title } from '@/components/ui';
+import { Card, Screen, Title } from '@/components/ui';
 import { Colors } from '@/constants/colors';
-import { useApp } from '@/store/app-store';
 
 const MENU: { emoji: string; label: string; href: Href }[] = [
   { emoji: '🗑️', label: 'ゴミ出し設定', href: '/garbage' },
@@ -12,8 +11,6 @@ const MENU: { emoji: string; label: string; href: Href }[] = [
 ];
 
 export default function MoreScreen() {
-  const { members, viewerId, setViewerId, showToast } = useApp();
-
   return (
     <Screen>
       <Title>その他</Title>
@@ -29,27 +26,6 @@ export default function MoreScreen() {
           </Pressable>
         ))}
       </Card>
-
-      <SectionTitle>お試し：だれの画面で見る？</SectionTitle>
-      <Card style={styles.demo}>
-        <Text style={styles.demoText}>
-          見本の画面だけの機能です。切り替えると、パートナーのスマホではどう見えるかを確認できます。
-        </Text>
-        <ChipRow>
-          {members.map((m) => (
-            <Chip
-              key={m.id}
-              label={m.name}
-              selected={viewerId === m.id}
-              onPress={() => {
-                setViewerId(m.id);
-                showToast(`${m.name}さんの画面に切り替えました`);
-              }}
-            />
-          ))}
-        </ChipRow>
-      </Card>
-      <View />
     </Screen>
   );
 }
@@ -60,6 +36,4 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 20 },
   label: { flex: 1, fontSize: 16, color: Colors.text },
   arrow: { fontSize: 22, color: Colors.subText },
-  demo: { backgroundColor: Colors.primarySoft, borderColor: Colors.primarySoft },
-  demoText: { fontSize: 13, color: Colors.text, lineHeight: 20 },
 });

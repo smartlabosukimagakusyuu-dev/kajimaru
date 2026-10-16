@@ -1,6 +1,7 @@
 // Firebaseへの接続。設定値は .env.local から読み込む（.env.example を参照）
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -13,3 +14,4 @@ const firebaseConfig = {
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);

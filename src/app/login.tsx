@@ -8,7 +8,7 @@ import { authErrorMessage, signInWithEmail, signInWithGoogle, signUpWithEmail } 
 import { useApp } from '@/store/app-store';
 
 export default function LoginScreen() {
-  const { loggedIn, onboarded } = useApp();
+  const { loggedIn } = useApp();
   const [showEmail, setShowEmail] = useState(false);
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [email, setEmail] = useState('');
@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
 
   // ログインできたら、Firebaseからの知らせを受けて自動で次の画面へ進む
-  if (loggedIn) return <Redirect href={onboarded ? '/home' : '/onboarding'} />;
+  if (loggedIn) return <Redirect href="/" />;
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);

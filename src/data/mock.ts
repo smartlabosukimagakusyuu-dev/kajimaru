@@ -1,17 +1,12 @@
 // 画面のイメージ確認用の見本データ。Firebaseにつないだら使わなくなる。
 import { addDays } from '@/lib/date';
-import type { Activity, Chore, Garbage, HouseRequest, Member, ShoppingItem } from '@/types';
+import type { Activity, Chore, Garbage, HouseRequest, ShoppingItem } from '@/types';
 
 export const ME = 'u1';
 export const PARTNER = 'u2';
 
 const now = new Date();
 const minutesAgo = (m: number) => new Date(now.getTime() - m * 60000).toISOString();
-
-export const mockMembers: Member[] = [
-  { id: ME, name: 'わたし', color: '#F28C28' },
-  { id: PARTNER, name: 'パートナー', color: '#3B9C8F' },
-];
 
 export const mockChores: Chore[] = [
   {

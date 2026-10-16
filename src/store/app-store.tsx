@@ -1,6 +1,8 @@
-// アプリ全体のデータ置き場。ログインはFirebase、それ以外はまだ見本データをメモリ上で動かしている。
-// No.3以降で、見本データの部分をFirestoreの読み書きに置き換える。
+// アプリ全体のデータ置き場。
+// ログイン・自分の情報・家族はFirebase、当番などはまだ見本データをメモリ上で動かしている。
+// No.4以降で、見本データの部分をFirestoreの読み書きに置き換える。
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
@@ -8,11 +10,12 @@ import {
   mockActivities,
   mockChores,
   mockGarbage,
-  mockMembers,
   mockRequests,
   mockShopping,
+  PARTNER,
 } from '@/data/mock';
-import { auth } from '@/lib/firebase';
+import { formatCode, updateProfile, type Household, type UserProfile } from '@/lib/family';
+import { auth, db } from '@/lib/firebase';
 import { currentAssignee } from '@/lib/logic';
 import type {
   Activity,
@@ -30,29 +33,73 @@ const newId = (prefix: string) => `${prefix}${++idCounter}`;
 function useAppState() {
   /** Firebaseのログイン中のユーザー。ログイン状態の確認が終わるまでは undefined */
   const [user, setUser] = useState<User | null | undefined>(undefined);
-  const [onboarded, setOnboarded] = useState(false);
+  // 読み込んだデータは「だれの／どの家族の」データかと一緒に持ち、
+  // ログインし直したときに前の人のデータが混ざらないようにする
+  const [profileSnap, setProfileSnap] = useState<{ uid: string; data: UserProfile | null }>();
+  const [householdSnap, setHouseholdSnap] = useState<Household | null>(null);
+  const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
+  /** アイコンの写真（いまはこの端末の中だけ。共有はあとで対応） */
+  const [photo, setPhoto] = useState<{ uid: string; uri?: string }>();
 
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, (next) => {
-        setUser(next);
-        if (!next) setOnboarded(false);
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  const uid = user?.uid;
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(
+      doc(db, 'users', uid),
+      (snap) => setProfileSnap({ uid, data: snap.exists() ? (snap.data() as UserProfile) : null }),
+      () => setProfileSnap({ uid, data: null }),
+    );
+  }, [uid]);
+  /** Firestoreの自分の情報。読み込み中は undefined、まだ無ければ null */
+  const profile = uid && profileSnap?.uid === uid ? profileSnap.data : undefined;
+  const photoUri = photo?.uid === uid ? photo?.uri : undefined;
+
+  const householdId = profile?.householdId;
+  useEffect(() => {
+    if (!householdId) return;
+    return onSnapshot(doc(db, 'households', householdId), (snap) =>
+      setHouseholdSnap(snap.exists() ? ({ id: snap.id, ...snap.data() } as Household) : null),
+    );
+  }, [householdId]);
+  const household = householdSnap?.id === householdId ? householdSnap : null;
+
+  const memberIdsKey = household?.memberIds.join(',') ?? '';
+  useEffect(() => {
+    if (!memberIdsKey) return;
+    const unsubscribes = memberIdsKey.split(',').map((id) =>
+      onSnapshot(doc(db, 'users', id), (snap) => {
+        if (snap.exists()) {
+          setMemberProfiles((all) => ({ ...all, [id]: snap.data() as UserProfile }));
+        }
       }),
-    [],
-  );
-  /** お試し用：「自分」と「パートナー」の画面を切り替える */
-  const [viewerId, setViewerId] = useState(ME);
-  const [members, setMembers] = useState<Member[]>(mockMembers);
+    );
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [memberIdsKey]);
+
+  // 当番などはまだ見本データなので、画面の中では「自分＝ME」「相手＝PARTNER」として扱う。
+  // 名前と色はFirestoreの本物を使う。（No.4以降で本物のIDに置き換える）
+  const partnerUid = household?.memberIds.find((id) => id !== uid);
+  const myProfile = uid ? (memberProfiles[uid] ?? profile ?? undefined) : undefined;
+  const partnerProfile = partnerUid ? memberProfiles[partnerUid] : undefined;
+  const members: Member[] = [];
+  if (myProfile) {
+    members.push({ id: ME, name: myProfile.displayName, color: myProfile.color, photoUri });
+  }
+  if (partnerProfile) {
+    members.push({ id: PARTNER, name: partnerProfile.displayName, color: partnerProfile.color });
+  }
+
+  const viewerId = ME;
   const [chores, setChores] = useState<Chore[]>(mockChores);
   const [garbage, setGarbage] = useState<Garbage[]>(mockGarbage);
   const [requests, setRequests] = useState<HouseRequest[]>(mockRequests);
   const [shopping, setShopping] = useState<ShoppingItem[]>(mockShopping);
   const [activities, setActivities] = useState<Activity[]>(mockActivities);
-  const [notificationsOn, setNotificationsOn] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const inviteCode = 'KJ-4821';
   const partnerId = members.find((m) => m.id !== viewerId)?.id;
 
   const showToast = (message: string) => {
@@ -62,7 +109,7 @@ function useAppState() {
   };
 
   const memberName = (id: string | null | undefined) =>
-    members.find((m) => m.id === id)?.name ?? 'だれか';
+    members.find((m) => m.id === id)?.name ?? (id === PARTNER ? 'パートナー' : 'だれか');
 
   const addActivity = (text: string) =>
     setActivities((list) => [
@@ -73,8 +120,11 @@ function useAppState() {
   return {
     authReady: user !== undefined,
     loggedIn: !!user,
+    /** ログイン済みで、Firestoreの自分の情報の読み込みが終わったか */
+    profileReady: !!user && profile !== undefined,
     user,
-    onboarded,
+    onboarded: !!profile?.householdId,
+    household,
     viewerId,
     partnerId,
     members,
@@ -83,24 +133,19 @@ function useAppState() {
     requests,
     shopping,
     activities,
-    notificationsOn,
+    notificationsOn: profile?.notificationsOn ?? true,
     toast,
-    inviteCode,
+    inviteCode: household ? formatCode(household.inviteCode) : '',
     memberName,
     showToast,
 
-    finishOnboarding: (name: string) => {
-      if (name.trim()) {
-        setMembers((list) => list.map((m) => (m.id === ME ? { ...m, name: name.trim() } : m)));
-      }
-      setOnboarded(true);
+    renameViewer: async (name: string) => {
+      if (uid) await updateProfile(uid, { displayName: name });
     },
-    renameViewer: (name: string) =>
-      setMembers((list) => list.map((m) => (m.id === viewerId ? { ...m, name } : m))),
-    setViewerPhoto: (photoUri: string | undefined) =>
-      setMembers((list) => list.map((m) => (m.id === viewerId ? { ...m, photoUri } : m))),
-    setViewerId,
-    setNotificationsOn,
+    setViewerPhoto: (uri: string | undefined) => uid && setPhoto({ uid, uri }),
+    setNotificationsOn: async (on: boolean) => {
+      if (uid) await updateProfile(uid, { notificationsOn: on });
+    },
 
     addChore: (chore: Omit<Chore, 'id' | 'rotationIndex'>) => {
       setChores((list) => [...list, { ...chore, id: newId('c'), rotationIndex: 0 }]);

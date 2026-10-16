@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Text } from 'react-native';
 
+import { Loading } from '@/components/loading';
 import { Colors } from '@/constants/colors';
 import { useApp } from '@/store/app-store';
 
@@ -10,8 +11,10 @@ const icon = (emoji: string) =>
   };
 
 export default function TabLayout() {
-  const { loggedIn, onboarded, requests, viewerId } = useApp();
+  const { authReady, loggedIn, profileReady, onboarded, requests, viewerId } = useApp();
+  if (!authReady) return <Loading />;
   if (!loggedIn) return <Redirect href="/login" />;
+  if (!profileReady) return <Loading />;
   if (!onboarded) return <Redirect href="/onboarding" />;
 
   const waitingCount = requests.filter((r) => r.to === viewerId && r.status === 'waiting').length;
