@@ -21,6 +21,8 @@ export type UserProfile = {
   color: string;
   householdId?: string;
   notificationsOn: boolean;
+  /** このユーザーのスマホに通知を送るためのトークン（スマホ版でログインすると保存される） */
+  expoPushToken?: string;
 };
 
 /** Firestoreの households/{householdId} */

@@ -5,6 +5,7 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // functions はサーバー側のコードなので、別に管理する
+    ignores: ['dist/*', 'functions/*'],
   },
 ]);

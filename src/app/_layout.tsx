@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { PushSetup } from '@/components/push-setup';
 import { Colors } from '@/constants/colors';
 import { AppProvider, useApp } from '@/store/app-store';
 
@@ -46,6 +47,7 @@ export default function RootLayout() {
           />
         </Stack>
         <Toast />
+        <PushSetup />
       </AppProvider>
     </SafeAreaProvider>
   );

@@ -34,7 +34,8 @@ export default function RequestNewScreen() {
       to,
       text: text.trim(),
       place: place.trim() || undefined,
-      due: addDays(new Date(), dueDays).toISOString(),
+      // 期限はその日の終わり（23:59）
+      due: new Date(addDays(new Date(), dueDays).setHours(23, 59, 0, 0)).toISOString(),
       notifyTime: time,
     });
     router.back();

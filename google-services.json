@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "771690767514",
+    "project_id": "kajimaru-c64f8",
+    "storage_bucket": "kajimaru-c64f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771690767514:android:6b708c5260b83aceeb2b23",
+        "android_client_info": {
+          "package_name": "com.smartlaboworks.kajimaru"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "771690767514-i41unsor9snsujv8dre1h019eimnjk28.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAY8ZTFH_usW88np9_SBOKc43FA2X0qB_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "771690767514-i41unsor9snsujv8dre1h019eimnjk28.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
