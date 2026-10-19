@@ -26,6 +26,10 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Firebase（Cloud Functionsの組み立て結果・ログ）
+functions/lib/
+firebase-debug.log
+
 # Android Studio
 .idea/
 
