@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+import { Linking, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AdBanner } from '@/components/ad-banner';
 import { Avatar, Button, Card, Field, Screen, SectionTitle } from '@/components/ui';
@@ -98,6 +99,21 @@ export default function SettingsScreen() {
             thumbColor="#fff"
           />
         </View>
+      </Card>
+
+      <SectionTitle>このアプリについて</SectionTitle>
+      <Card>
+        <Button
+          label="プライバシーポリシー"
+          variant="secondary"
+          onPress={() => Linking.openURL('https://smartlaboworks.com/kajimaru/privacy')}
+        />
+        <Button
+          label="お問い合わせ（メール）"
+          variant="secondary"
+          onPress={() => Linking.openURL('mailto:info@smartlaboworks.com?subject=カジまるについて')}
+        />
+        <Text style={styles.account}>カジまる {Constants.expoConfig?.version ?? ''}・株式会社スマートラボ</Text>
       </Card>
 
       <SectionTitle>アカウント</SectionTitle>
