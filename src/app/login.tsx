@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Field, Screen, Segmented } from '@/components/ui';
 import { Colors } from '@/constants/colors';
@@ -40,15 +40,8 @@ export default function LoginScreen() {
       </View>
 
       <Card>
-        {Platform.OS === 'web' ? (
-          <Button label="Googleでログイン" disabled={busy} onPress={() => run(signInWithGoogle)} />
-        ) : (
-          // スマホ版のGoogleログインは、専用の部品を入れてから対応する
-          <Text style={styles.note}>
-            スマホ版のGoogleログインは準備中です。メールアドレスでログインしてください。
-          </Text>
-        )}
-        {showEmail || Platform.OS !== 'web' ? (
+        <Button label="Googleでログイン" disabled={busy} onPress={() => run(signInWithGoogle)} />
+        {showEmail ? (
           <View style={{ gap: 12 }}>
             <Segmented
               value={mode}
@@ -111,5 +104,4 @@ const styles = StyleSheet.create({
   appName: { fontSize: 32, fontWeight: '800', color: Colors.primaryDark },
   catch: { fontSize: 15, color: Colors.subText },
   error: { fontSize: 13, color: Colors.danger, lineHeight: 20 },
-  note: { fontSize: 13, color: Colors.subText, lineHeight: 20 },
 });

@@ -3,21 +3,15 @@ import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
-  GoogleAuthProvider,
   signInWithEmailAndPassword,
-  signInWithPopup,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { Platform } from 'react-native';
 
 import { auth } from '@/lib/firebase';
+import { googleSignIn, googleSignOut } from '@/lib/google-sign-in';
 
 export async function signInWithGoogle() {
-  if (Platform.OS !== 'web') {
-    // Androidでは専用の部品（開発ビルド）が必要なので、Android対応のときに追加する
-    throw new Error('Googleログインは、いまはブラウザ版のみ対応しています');
-  }
-  await signInWithPopup(auth, new GoogleAuthProvider());
+  await googleSignIn();
 }
 
 export async function signInWithEmail(email: string, password: string) {
@@ -29,6 +23,7 @@ export async function signUpWithEmail(email: string, password: string) {
 }
 
 export async function signOut() {
+  await googleSignOut();
   await firebaseSignOut(auth);
 }
 
