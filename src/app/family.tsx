@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Share, StyleSheet, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ad-banner';
 import { Avatar, Button, Card, Field, Screen, SectionTitle } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { joinHousehold, leaveHousehold, MAX_MEMBERS } from '@/lib/family';
@@ -57,7 +58,7 @@ export default function FamilyScreen() {
   };
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen footer={<AdBanner />} edges={['bottom']}>
       {household ? <Text style={styles.familyName}>{household.name}</Text> : null}
       <SectionTitle>
         メンバー（{members.length} / {MAX_MEMBERS}人）

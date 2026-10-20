@@ -1,6 +1,7 @@
 import { router, type Href } from 'expo-router';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { AdBanner } from '@/components/ad-banner';
 import { Card, Screen, Title } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 
@@ -12,7 +13,7 @@ const MENU: { emoji: string; label: string; href: Href }[] = [
 
 export default function MoreScreen() {
   return (
-    <Screen>
+    <Screen footer={<AdBanner />}>
       <Title>その他</Title>
       <Card style={{ gap: 0, paddingVertical: 4 }}>
         {MENU.map((m, i) => (

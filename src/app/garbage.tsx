@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ad-banner';
 import { TimePicker } from '@/components/time-picker';
 import {
   Badge,
@@ -57,7 +58,7 @@ export default function GarbageScreen() {
   };
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen footer={<AdBanner />} edges={['bottom']}>
       <SectionTitle>登録しているゴミの日</SectionTitle>
       {garbage.length ? (
         garbage.map((g) => (

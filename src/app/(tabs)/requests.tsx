@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 
 import { RequestCard } from '@/components/request-card';
+import { AdBanner } from '@/components/ad-banner';
 import { Button, Card, Empty, Screen, Segmented, Title } from '@/components/ui';
 import { useApp } from '@/store/app-store';
 
@@ -15,7 +16,7 @@ export default function RequestsScreen() {
     .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'));
 
   return (
-    <Screen>
+    <Screen footer={<AdBanner />}>
       <Title sub="ちょっとしたお願いを、家族に送れます">頼みごと</Title>
       <Segmented
         value={tab}

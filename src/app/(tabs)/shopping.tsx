@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ad-banner';
 import { Button, Card, Chip, ChipRow, Empty, Field, Screen, SectionTitle, Title } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { useApp } from '@/store/app-store';
@@ -22,7 +23,7 @@ export default function ShoppingScreen() {
   const hasBought = shopping.some((i) => i.bought);
 
   return (
-    <Screen>
+    <Screen footer={<AdBanner />}>
       <Title sub="家族の誰でも追加できます">買いたいもの</Title>
 
       <Card>

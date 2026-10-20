@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ChoreRow } from '@/components/chore-row';
-import { AdBanner, Badge, Button, Card, Empty, Screen, SectionTitle, Title } from '@/components/ui';
+import { AdBanner } from '@/components/ad-banner';
+import { Badge, Button, Card, Empty, Screen, SectionTitle, Title } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { formatDaysLabel } from '@/lib/date';
 import { ASSIGN_MODE_LABEL, choresOn } from '@/lib/logic';

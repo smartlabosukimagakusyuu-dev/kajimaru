@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
+import { AdBanner } from '@/components/ad-banner';
 import { Avatar, Button, Card, Field, Screen, SectionTitle } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { authErrorMessage, deleteAccount, signOut } from '@/lib/auth';
@@ -50,7 +51,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen footer={<AdBanner />} edges={['bottom']}>
       <SectionTitle>アイコン</SectionTitle>
       <Card style={styles.iconCard}>
         <Avatar name={me?.name ?? '?'} color={me?.color ?? Colors.primary} photoUri={me?.photoUri} size={88} />

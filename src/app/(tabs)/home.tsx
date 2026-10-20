@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChoreRow } from '@/components/chore-row';
 import { RequestCard } from '@/components/request-card';
-import { AdBanner, Avatar, Button, Card, Empty, Screen, SectionTitle, Title } from '@/components/ui';
+import { AdBanner } from '@/components/ad-banner';
+import { Avatar, Button, Card, Empty, Screen, SectionTitle, Title } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { addDays, formatTimeAgo, WEEKDAYS } from '@/lib/date';
 import { choresOn, isGarbageDay } from '@/lib/logic';

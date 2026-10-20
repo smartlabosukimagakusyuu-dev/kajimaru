@@ -213,15 +213,6 @@ export function Empty({ children }: { children: ReactNode }) {
   return <Text style={styles.empty}>{children}</Text>;
 }
 
-/** バナー広告の場所（いまは見本。No.8でAdMobのテスト広告に置き換える） */
-export function AdBanner() {
-  return (
-    <View style={styles.ad}>
-      <Text style={styles.adText}>広告（バナー）がここに表示されます</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { padding: 16, paddingBottom: 32, gap: 16 },
@@ -287,13 +278,4 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' },
   badgeText: { fontSize: 12, fontWeight: '700' },
   empty: { color: Colors.subText, fontSize: 14, paddingVertical: 4 },
-  ad: {
-    height: 56,
-    backgroundColor: '#EDE7E1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  adText: { color: Colors.subText, fontSize: 12 },
 });
