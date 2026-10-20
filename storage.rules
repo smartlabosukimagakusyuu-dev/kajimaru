@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// カジまるの写真（Storage）のセキュリティルール
+// アイコンの写真：本人だけが保存・削除でき、本人と同じ家族のメンバーだけが見られる
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function householdOf(uid) {
+      return firestore.get(/databases/(default)/documents/users/$(uid)).data.householdId;
+    }
+
+    match /users/{uid}/avatar.jpg {
+      allow read: if request.auth != null
+        && (request.auth.uid == uid || householdOf(request.auth.uid) == householdOf(uid));
+
+      // 画像だけ・2MBまで
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

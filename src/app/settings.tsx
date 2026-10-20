@@ -26,16 +26,30 @@ export default function SettingsScreen() {
   const [name, setName] = useState(me?.name ?? '');
   const [confirmLeave, setConfirmLeave] = useState(false);
 
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  const changePhoto = async (uri: string | undefined, done: string) => {
+    setPhotoBusy(true);
+    try {
+      await setViewerPhoto(uri);
+      showToast(done);
+    } catch {
+      showToast('写真を保存できませんでした。インターネットの接続を確認してください');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      // アイコンは小さく表示するので、軽くしてから保存する
+      quality: 0.5,
     });
     if (result.canceled) return;
-    setViewerPhoto(result.assets[0].uri);
-    showToast('アイコンを変更しました');
+    await changePhoto(result.assets[0].uri, 'アイコンを変更しました。家族の画面にも表示されます');
   };
 
   const logout = async () => {
@@ -58,16 +72,19 @@ export default function SettingsScreen() {
       <Card style={styles.iconCard}>
         <Avatar name={me?.name ?? '?'} color={me?.color ?? Colors.primary} photoUri={me?.photoUri} size={88} />
         <View style={{ flex: 1, gap: 8 }}>
-          <Button label="写真を選ぶ" small onPress={pickPhoto} />
+          <Button
+            label={photoBusy ? '保存中…' : '写真を選ぶ'}
+            small
+            disabled={photoBusy}
+            onPress={pickPhoto}
+          />
           {me?.photoUri ? (
             <Button
               label="写真をはずす"
               small
               variant="ghost"
-              onPress={() => {
-                setViewerPhoto(undefined);
-                showToast('アイコンを元に戻しました');
-              }}
+              disabled={photoBusy}
+              onPress={() => changePhoto(undefined, 'アイコンを元に戻しました')}
             />
           ) : null}
         </View>

@@ -41,8 +41,16 @@
         "expo-image-picker",
         {
           "photosPermission": "家族に表示するアイコンの写真を選ぶために使います",
-          "cameraPermission": false,
+          "cameraPermission": "招待のQRコードを読み取るために使います",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "招待のQRコードを読み取るために使います",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [

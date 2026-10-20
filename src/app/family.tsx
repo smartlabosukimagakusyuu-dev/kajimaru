@@ -3,9 +3,13 @@ import { useState } from 'react';
 import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { AdBanner } from '@/components/ad-banner';
+import QRCode from 'react-native-qrcode-svg';
+
+import { QrScanButton } from '@/components/qr-scan-button';
 import { Avatar, Button, Card, Field, Screen, SectionTitle } from '@/components/ui';
 import { Colors } from '@/constants/colors';
-import { joinHousehold, leaveHousehold, MAX_MEMBERS } from '@/lib/family';
+import { formatCode, joinHousehold, leaveHousehold, MAX_MEMBERS } from '@/lib/family';
+import { inviteLink, takePendingInviteCode } from '@/lib/invite-link';
 import { useApp } from '@/store/app-store';
 
 export default function FamilyScreen() {
@@ -13,7 +17,11 @@ export default function FamilyScreen() {
   const full = members.length >= MAX_MEMBERS;
   const me = members.find((m) => m.id === viewerId);
 
-  const [code, setCode] = useState('');
+  // 招待のQRコードからアプリを開いた場合は、そのコードを最初から入れておく
+  const [code, setCode] = useState(() => {
+    const pending = takePendingInviteCode();
+    return pending ? formatCode(pending) : '';
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -89,10 +97,14 @@ export default function FamilyScreen() {
             <Text style={styles.desc}>
               このコードをパートナーに伝えてください。パートナーが先に自分の家族を作っていても、このコードで参加できます。
             </Text>
-            <View style={styles.qr}>
-              <Text style={styles.qrText}>QRコード</Text>
-              <Text style={styles.qrSub}>（あとで表示されます）</Text>
-            </View>
+            {household ? (
+              <View style={styles.qr}>
+                <QRCode value={inviteLink(household.inviteCode)} size={180} color={Colors.text} />
+              </View>
+            ) : null}
+            <Text style={styles.qrSub}>
+              パートナーのカジまるの「QRコードを読み取る」で読み取ってもらうと、参加できます。
+            </Text>
             <Text style={styles.codeLabel}>招待コード</Text>
             <Text style={styles.code}>{inviteCode}</Text>
             <Button label="招待コードを送る" style={{ alignSelf: 'stretch' }} onPress={invite} />
@@ -103,6 +115,7 @@ export default function FamilyScreen() {
             <Text style={styles.desc}>
               パートナーから招待コードをもらったときは、ここに入力してください。今の家族から、パートナーの家族へ移ります。
             </Text>
+            <QrScanButton onScanned={(scanned) => setCode(formatCode(scanned))} />
             <Field
               value={code}
               onChangeText={setCode}
@@ -151,19 +164,8 @@ const styles = StyleSheet.create({
   small: { fontSize: 12, color: Colors.subText, lineHeight: 18 },
   error: { fontSize: 13, color: Colors.danger, lineHeight: 20 },
   warn: { fontSize: 13, color: Colors.danger, lineHeight: 20 },
-  qr: {
-    width: 160,
-    height: 160,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  qrText: { fontSize: 18, fontWeight: '700', color: Colors.subText },
-  qrSub: { fontSize: 11, color: Colors.subText },
+  qr: { padding: 12, borderRadius: 12, backgroundColor: '#FFFFFF' },
+  qrSub: { fontSize: 12, color: Colors.subText, textAlign: 'center', lineHeight: 18 },
   codeLabel: { fontSize: 13, color: Colors.subText },
   code: { fontSize: 28, fontWeight: '800', letterSpacing: 4, color: Colors.primaryDark },
 });

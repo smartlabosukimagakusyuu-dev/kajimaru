@@ -3,6 +3,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { removeAvatar, uploadAvatar } from '@/lib/avatar';
 import * as choresApi from '@/lib/chores';
 import { formatCode, updateProfile, type Household, type UserProfile } from '@/lib/family';
 import { auth, db } from '@/lib/firebase';
@@ -34,8 +35,6 @@ function useAppState() {
   const [profileSnap, setProfileSnap] = useState<{ uid: string; data: UserProfile | null }>();
   const [householdSnap, setHouseholdSnap] = useState<Household | null>(null);
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
-  /** アイコンの写真（いまはこの端末の中だけ。共有はあとで対応） */
-  const [photo, setPhoto] = useState<{ uid: string; uri?: string }>();
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -50,7 +49,6 @@ function useAppState() {
   }, [uid]);
   /** Firestoreの自分の情報。読み込み中は undefined、まだ無ければ null */
   const profile = uid && profileSnap?.uid === uid ? profileSnap.data : undefined;
-  const photoUri = photo?.uid === uid ? photo?.uri : undefined;
 
   const householdId = profile?.householdId;
   useEffect(() => {
@@ -82,7 +80,7 @@ function useAppState() {
       id,
       name: memberProfiles[id].displayName,
       color: memberProfiles[id].color,
-      photoUri: id === uid ? photoUri : undefined,
+      photoUri: memberProfiles[id].photoUrl,
     }));
 
   // 家族で共有しているデータ（Firestoreからリアルタイムに読み込む）
@@ -140,7 +138,12 @@ function useAppState() {
     renameViewer: async (name: string) => {
       if (uid) await updateProfile(uid, { displayName: name });
     },
-    setViewerPhoto: (uri: string | undefined) => uid && setPhoto({ uid, uri }),
+    /** アイコンの写真を保存（家族の画面にも表示される）。undefined なら写真をはずす */
+    setViewerPhoto: async (uri: string | undefined) => {
+      if (!uid) return;
+      if (uri) await uploadAvatar(uid, uri);
+      else await removeAvatar(uid);
+    },
     setNotificationsOn: async (on: boolean) => {
       if (uid) await updateProfile(uid, { notificationsOn: on });
     },

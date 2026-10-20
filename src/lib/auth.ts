@@ -7,9 +7,10 @@ import {
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteObject, ref } from 'firebase/storage';
 
 import { leaveHousehold } from '@/lib/family';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { googleSignIn, googleSignOut } from '@/lib/google-sign-in';
 
 export async function signInWithGoogle() {
@@ -41,6 +42,9 @@ export async function deleteAccount(householdId?: string) {
     throw new FirebaseError('auth/requires-recent-login', 'requires recent login');
   }
   if (householdId) await leaveHousehold(user.uid, householdId);
+  await deleteObject(ref(storage, `users/${user.uid}/avatar.jpg`)).catch(() => {
+    // 写真を設定していない場合は、消すものがないのでそのまま進める
+  });
   await deleteDoc(doc(db, 'users', user.uid));
   await googleSignOut();
   await deleteUser(user);

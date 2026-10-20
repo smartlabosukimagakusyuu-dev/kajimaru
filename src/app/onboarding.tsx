@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Loading } from '@/components/loading';
+import { QrScanButton } from '@/components/qr-scan-button';
 import { Button, Card, Field, Screen } from '@/components/ui';
 import { Colors } from '@/constants/colors';
-import { createHousehold, joinHousehold } from '@/lib/family';
+import { createHousehold, formatCode, joinHousehold } from '@/lib/family';
+import { takePendingInviteCode } from '@/lib/invite-link';
 import { useApp } from '@/store/app-store';
 
 type Step = 'name' | 'family' | 'join' | 'created' | 'notify';
@@ -16,7 +18,9 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<Step>('name');
   // Googleログインなら、Googleの名前をはじめから入れておく
   const [name, setName] = useState(user?.displayName ?? '');
-  const [code, setCode] = useState('');
+  // 招待のQRコードからアプリを開いた場合は、そのコードを最初から入れておく
+  const [pendingCode] = useState(takePendingInviteCode);
+  const [code, setCode] = useState(pendingCode ? formatCode(pendingCode) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,7 +59,11 @@ export default function OnboardingScreen() {
           <Text style={styles.heading}>あなたの呼び名を教えてください</Text>
           <Text style={styles.desc}>家族の画面や通知に表示されます。あとから変えられます。</Text>
           <Field value={name} onChangeText={setName} placeholder="例：まさ、ママ、パパ" />
-          <Button label="次へ" disabled={!name.trim()} onPress={() => setStep('family')} />
+          <Button
+            label="次へ"
+            disabled={!name.trim()}
+            onPress={() => setStep(pendingCode ? 'join' : 'family')}
+          />
         </>
       )}
 
@@ -91,7 +99,10 @@ export default function OnboardingScreen() {
       {step === 'join' && (
         <>
           <Text style={styles.heading}>招待コードを入力</Text>
-          <Text style={styles.desc}>パートナーの「その他 → 家族・招待」に表示されている6文字です。</Text>
+          <Text style={styles.desc}>
+            パートナーの「その他 → 家族・招待」に表示されているQRコードを読み取るか、6文字のコードを入力してください。
+          </Text>
+          <QrScanButton onScanned={(scanned) => setCode(formatCode(scanned))} />
           <Field
             value={code}
             onChangeText={setCode}
