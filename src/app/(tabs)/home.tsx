@@ -37,6 +37,16 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {members.length < 2 && (
+        <Card style={styles.inviteCard}>
+          <Text style={styles.inviteTitle}>パートナーとつながりましょう</Text>
+          <Text style={styles.inviteText}>
+            招待コードを送るか、パートナーからもらったコードで参加すると、当番や頼みごとを2人で共有できます。
+          </Text>
+          <Button label="招待する・参加する" small onPress={() => router.push('/family')} />
+        </Card>
+      )}
+
       <Card style={tomorrowGarbage.length ? styles.garbageCard : undefined}>
         <Text style={styles.cardLabel}>🗑️ 明日のゴミ出し</Text>
         {tomorrowGarbage.length ? (
@@ -114,6 +124,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  inviteCard: { backgroundColor: Colors.primarySoft, borderColor: Colors.primarySoft },
+  inviteTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  inviteText: { fontSize: 13, color: Colors.text, lineHeight: 20 },
   garbageCard: { backgroundColor: Colors.accentSoft, borderColor: Colors.accentSoft },
   cardLabel: { fontSize: 13, fontWeight: '700', color: Colors.subText },
   garbageText: { fontSize: 18, fontWeight: '800', color: Colors.text },

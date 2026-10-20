@@ -1,8 +1,10 @@
 // 家族の作成・招待コードでの参加（Firestore）
 import { FirebaseError } from 'firebase/app';
 import {
+  arrayRemove,
   arrayUnion,
   collection,
+  deleteField,
   doc,
   getDoc,
   serverTimestamp,
@@ -70,32 +72,44 @@ export async function createHousehold(uid: string, displayName: string) {
     createdAt: serverTimestamp(),
   });
   batch.set(doc(db, 'inviteCodes', code), { householdId: householdRef.id });
-  batch.set(doc(db, 'users', uid), {
-    displayName,
-    color: MEMBER_COLORS[0],
-    householdId: householdRef.id,
-    notificationsOn: true,
-  } satisfies UserProfile);
+  batch.set(
+    doc(db, 'users', uid),
+    { displayName, color: MEMBER_COLORS[0], householdId: householdRef.id, notificationsOn: true },
+    { merge: true },
+  );
   await batch.commit();
 }
 
-export async function joinHousehold(uid: string, displayName: string, input: string) {
+/**
+ * 招待コードで家族に参加する。
+ * すでに別の家族（自分ひとりで作った家族など）に入っている場合は、そこから抜けて移る。
+ */
+export async function joinHousehold(
+  uid: string,
+  displayName: string,
+  input: string,
+  currentHouseholdId?: string,
+) {
   const code = normalizeCode(input);
   const invite = await getDoc(doc(db, 'inviteCodes', code));
   if (!invite.exists()) throw new Error('招待コードが見つかりません。もう一度確かめてください');
   const householdId = invite.data().householdId as string;
+  if (householdId === currentHouseholdId) throw new Error('すでにこの家族に入っています');
 
   const batch = writeBatch(db);
+  if (currentHouseholdId) {
+    batch.update(doc(db, 'households', currentHouseholdId), { memberIds: arrayRemove(uid) });
+  }
   batch.update(doc(db, 'households', householdId), {
     memberIds: arrayUnion(uid),
     lastJoinCode: code,
   });
-  batch.set(doc(db, 'users', uid), {
-    displayName,
-    color: MEMBER_COLORS[1],
-    householdId,
-    notificationsOn: true,
-  } satisfies UserProfile);
+  // merge：通知用トークンなど、ほかの項目は残す
+  batch.set(
+    doc(db, 'users', uid),
+    { displayName, color: MEMBER_COLORS[1], householdId, notificationsOn: true },
+    { merge: true },
+  );
   try {
     await batch.commit();
   } catch (e) {
@@ -104,6 +118,14 @@ export async function joinHousehold(uid: string, displayName: string, input: str
     }
     throw e;
   }
+}
+
+/** 家族から抜ける（抜けたあとは「はじめの設定」で、家族を作るか参加し直す） */
+export async function leaveHousehold(uid: string, householdId: string) {
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'households', householdId), { memberIds: arrayRemove(uid) });
+  batch.update(doc(db, 'users', uid), { householdId: deleteField() });
+  await batch.commit();
 }
 
 export async function updateProfile(uid: string, data: Partial<UserProfile>) {

@@ -55,6 +55,12 @@ service cloud.firestore {
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.plan == resource.data.plan;
 
+      // 家族から抜ける：自分だけをメンバーから外せる
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.memberIds
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        && request.resource.data.memberIds == resource.data.memberIds.removeAll([request.auth.uid]);
+
       // 招待コードで参加する：自分を1人だけ追加できる（2人まで）
       allow update: if signedIn()
         && !(request.auth.uid in resource.data.memberIds)
