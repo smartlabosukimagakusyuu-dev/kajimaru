@@ -19,6 +19,7 @@ export default function SettingsScreen() {
     setNotificationsOn,
     showToast,
     user,
+    household,
   } = useApp();
   const me = members.find((m) => m.id === viewerId);
   const [name, setName] = useState(me?.name ?? '');
@@ -43,7 +44,7 @@ export default function SettingsScreen() {
 
   const leave = async () => {
     try {
-      await deleteAccount();
+      await deleteAccount(household?.id);
       router.replace('/login');
     } catch (e) {
       showToast(authErrorMessage(e));

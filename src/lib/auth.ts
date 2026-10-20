@@ -6,8 +6,10 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
+import { deleteDoc, doc } from 'firebase/firestore';
 
-import { auth } from '@/lib/firebase';
+import { leaveHousehold } from '@/lib/family';
+import { auth, db } from '@/lib/firebase';
 import { googleSignIn, googleSignOut } from '@/lib/google-sign-in';
 
 export async function signInWithGoogle() {
@@ -27,9 +29,21 @@ export async function signOut() {
   await firebaseSignOut(auth);
 }
 
-export async function deleteAccount() {
-  if (!auth.currentUser) return;
-  await deleteUser(auth.currentUser);
+/**
+ * 退会：家族から抜け、プロフィールを消してから、ログイン情報を削除する。
+ * 安全のため、最後にログインしてから時間がたっている場合は、先にログインし直してもらう。
+ */
+export async function deleteAccount(householdId?: string) {
+  const user = auth.currentUser;
+  if (!user) return;
+  const lastSignIn = new Date(user.metadata.lastSignInTime ?? 0).getTime();
+  if (Date.now() - lastSignIn > 5 * 60 * 1000) {
+    throw new FirebaseError('auth/requires-recent-login', 'requires recent login');
+  }
+  if (householdId) await leaveHousehold(user.uid, householdId);
+  await deleteDoc(doc(db, 'users', user.uid));
+  await googleSignOut();
+  await deleteUser(user);
 }
 
 /** Firebaseのエラーを、画面に出す日本語のメッセージにする */
