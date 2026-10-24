@@ -1,21 +1,22 @@
-The MIT License (MIT)
+Copyright (c) 2026 株式会社スマートラボ (Smart Labo Inc.). All rights reserved.
 
-Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+このリポジトリのソースコード・画像・文章の著作権は、株式会社スマートラボに帰属します。
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+GitHub の利用規約で認められている範囲（GitHub 上での閲覧とフォーク）を除き、
+株式会社スマートラボの書面による許可なく、全部または一部を複製・改変・再配布・
+商用利用することを禁止します。
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+ただし、このリポジトリが利用しているオープンソースのライブラリ（package.json に記載のもの）は、
+それぞれのライセンスに従います。
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+------------------------------------------------------------------------------
+
+Copyright (c) 2026 Smart Labo Inc. All rights reserved.
+
+This repository is published for viewing purposes only. Except as permitted by
+the GitHub Terms of Service (viewing and forking on GitHub), no part of this
+repository may be copied, modified, redistributed, or used commercially without
+prior written permission from Smart Labo Inc.
+
+Third-party open source libraries used by this project (as listed in
+package.json) remain subject to their own licenses.
